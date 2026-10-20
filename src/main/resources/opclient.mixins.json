@@ -1,0 +1,7 @@
+{
+  "required": false,
+  "package": "com.oplauncher.client.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": ["OwnNameTagMixin", "OwnNameTagMixinDistance"],
+  "injectors": { "defaultRequire": 0 }
+}
