@@ -3,7 +3,7 @@
   "id": "opclient",
   "version": "${version}",
   "name": "Op Client",
-  "description": "Op Launcher in-game extras: your own name tag in third person and the Op logo next to other Op Launcher players.",
+  "description": "Op Launcher in-game extras: your own name tag in third person, a Quick Play star button in Multiplayer and the Op logo next to other Op Launcher players.",
   "authors": ["Op Launcher"],
   "license": "MIT",
   "environment": "client",
