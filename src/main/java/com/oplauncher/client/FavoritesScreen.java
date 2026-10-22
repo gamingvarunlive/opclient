@@ -26,20 +26,44 @@ public class FavoritesScreen extends Screen {
     private int selected = -1;
     private int page = 0;
 
-    public FavoritesScreen(Screen parent) {
+    /** servers: the entries of the Multiplayer list (they already have the pinged server description); may be empty. */
+    public FavoritesScreen(Screen parent, List<ServerData> servers) {
         super(Component.literal("Quick Play favorites"));
         this.parent = parent;
+        this.given = servers == null ? new ArrayList<>() : servers;
+    }
+
+    private final List<ServerData> given;
+
+    /** Readable name: the first line of the server description (what the list shows in colour), else the saved name, else the address. */
+    static String displayName(ServerData d) {
+        String text = "";
+        try {
+            Object motd = ServerData.class.getField("motd").get(d);
+            if (motd instanceof Component c) text = c.getString();
+        } catch (Throwable ignored) {
+            // no description on this version
+        }
+        int nl = text.indexOf('\n');
+        if (nl >= 0) text = text.substring(0, nl);
+        text = text.replaceAll("\\s+", " ").trim();
+        if (text.isEmpty() || text.equalsIgnoreCase("A Minecraft Server")) text = String.valueOf(d.name).trim();
+        if (text.isEmpty() || text.equalsIgnoreCase("Minecraft Server")) text = String.valueOf(d.ip);
+        return text.length() > 34 ? text.substring(0, 33) + "..." : text;
     }
 
     @Override
     protected void init() {
         servers.clear();
-        try {
-            ServerList list = new ServerList(Minecraft.getInstance());
-            list.load();
-            for (int i = 0; i < list.size(); i++) servers.add(list.get(i));
-        } catch (Throwable ignored) {
-            // no readable server list: the screen just shows the empty message
+        servers.addAll(given);
+        if (servers.isEmpty()) {
+            try {
+                ServerList list = new ServerList(Minecraft.getInstance());
+                list.load();
+                for (int i = 0; i < list.size(); i++) servers.add(list.get(i));
+            } catch (Throwable ignored) {
+                // no readable server list: the screen just shows the empty message
+            }
         }
         favs = OpFavorites.ips();
         if (selected >= servers.size()) selected = -1;
@@ -72,7 +96,7 @@ public class FavoritesScreen extends Screen {
             ServerData d = servers.get(i);
             boolean fav = favs.contains(key(d));
             Component star = fav ? Component.literal("★ ").withStyle(ChatFormatting.GOLD) : Component.literal("☆ ").withStyle(ChatFormatting.GRAY);
-            Component label = Component.literal(index == selected ? "> " : "  ").append(star).append(Component.literal(String.valueOf(d.name)));
+            Component label = Component.literal(index == selected ? "> " : "  ").append(star).append(Component.literal(displayName(d)));
             Button row = Button.builder(label, b -> {
                 selected = index;
                 rebuild();
@@ -91,6 +115,13 @@ public class FavoritesScreen extends Screen {
             this.addRenderableWidget(prev);
             this.addRenderableWidget(info);
             this.addRenderableWidget(next);
+        }
+
+        // address of the selected server
+        if (selected >= 0 && selected < servers.size()) {
+            Button addr = Button.builder(Component.literal(String.valueOf(servers.get(selected).ip)), b -> { }).bounds(cx - 100, this.height - 78, 200, 20).build();
+            addr.active = false;
+            this.addRenderableWidget(addr);
         }
 
         // the action button changes with the selected server
@@ -117,7 +148,7 @@ public class FavoritesScreen extends Screen {
         if (selected < 0 || selected >= servers.size()) return;
         ServerData d = servers.get(selected);
         try {
-            boolean now = OpFavorites.toggle(d.name, d.ip);
+            boolean now = OpFavorites.toggle(displayName(d), d.ip);
             if (now) favs.add(key(d)); else favs.remove(key(d));
         } catch (Exception ignored) {
             // list full or file not writable: nothing changes
