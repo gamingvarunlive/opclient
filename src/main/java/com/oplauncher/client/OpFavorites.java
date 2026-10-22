@@ -6,7 +6,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -63,6 +66,14 @@ public final class OpFavorites {
             if (sb.length() >= 40) break;
         }
         return sb.toString().trim();
+    }
+
+    /** all favorite addresses, lower case */
+    public static Set<String> ips() {
+        Set<String> out = new HashSet<>();
+        if (!enabled()) return out;
+        for (String[] s : read(Paths.get(PATH))) out.add(s[1].toLowerCase(Locale.ROOT));
+        return out;
     }
 
     public static boolean contains(String ip) {
