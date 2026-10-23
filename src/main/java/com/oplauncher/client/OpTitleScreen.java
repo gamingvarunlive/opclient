@@ -11,6 +11,8 @@ import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
+import net.fabricmc.loader.api.FabricLoader;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,6 +28,8 @@ public class OpTitleScreen extends Screen {
     private static final Identifier BG = tex("menu_bg");
     private static final Identifier WORDMARK = tex("wordmark");
     private static final Identifier LOGO = tex("logo");
+    private static final Identifier DISCORD = tex("discord");
+    private static final String DISCORD_URL = "https://discord.gg/zv2MjCwYaJ";
 
     private static final int CYAN = 0xFF22D3EE;
     private static final int PANEL = 0xC0101418;
@@ -35,7 +39,7 @@ public class OpTitleScreen extends Screen {
     private static final int GREY = 0xFF9FB3BF;
 
     private static final int BTN_W = 176, BTN_H = 22, GAP = 3;
-    private static final int TOP = 22, TOP_GAP = 4;
+    private static final int TOP = 24, TOP_GAP = 7;
 
     private static final class Item {
         final String label, icon;       // icon may be null
@@ -51,6 +55,7 @@ public class OpTitleScreen extends Screen {
     private final List<Item> menu = new ArrayList<>();   // centre buttons
     private final List<Item> top = new ArrayList<>();    // top right row
     private Item quit;
+    private Item discord;
     private Item chip;                                   // player name
     private String userName = "Player";
 
@@ -76,15 +81,20 @@ public class OpTitleScreen extends Screen {
         menu.add(new Item("Singleplayer", "person", false, () -> mc.setScreen(new SelectWorldScreen(self))));
         menu.add(new Item("Multiplayer", "users", false, () -> mc.setScreen(new JoinMultiplayerScreen(self))));
         menu.add(new Item("Cosmetics", "hanger", false, null));
-        menu.add(new Item("Mods", "grid", false, null));
+        // Mods opens the Mod Menu mod, so the button only exists when that mod is in this profile
+        if (FabricLoader.getInstance().isModLoaded("modmenu")) menu.add(new Item("Mods", "grid", false, () -> openModMenu(mc, self)));
         menu.add(new Item("Store", "store", true, null));
         quit = new Item("Quit Game", null, true, mc::stop);
+        discord = new Item("", null, false, () -> openLink(DISCORD_URL));
 
         int total = menu.size() * BTN_H + (menu.size() - 1) * GAP + 14 + 20;
         int y = Math.max(this.height / 2 - total / 2 + 24, 92);
         int x = this.width / 2 - BTN_W / 2;
         for (Item it : menu) { place(it, x, y, BTN_W, BTN_H); y += BTN_H + GAP; }
         place(quit, this.width / 2 - 45, y + 11, 90, 20);
+
+        int dw = Math.min(112, this.width / 5), dh = dw * 125 / 202;
+        place(discord, this.width - dw - 10, this.height - dh - 10, dw, dh);
 
         // top right: name, then the icon buttons, the last one is the accent logo button
         int nameW = Math.max(60, this.font.width(userName) + 34);
@@ -144,11 +154,11 @@ public class OpTitleScreen extends Screen {
 
         // top row
         box(g, chip, chip.hit(mouseX, mouseY));
-        icon(g, "person", chip.x + 8, chip.y + 5, 12);
+        icon(g, "person", chip.x + 8, chip.y + 6, 12);
         g.drawString(this.font, userName, chip.x + 24, chip.y + (chip.h - 8) / 2, WHITE, true);
         for (Item it : top) {
             box(g, it, it.hit(mouseX, mouseY));
-            icon(g, it.icon, it.x + 4, it.y + 4, 14);
+            icon(g, it.icon, it.x + 4, it.y + 4, 16);
         }
 
         // menu
@@ -165,8 +175,49 @@ public class OpTitleScreen extends Screen {
         int qw = this.font.width(quit.label);
         g.drawString(this.font, quit.label, quit.x + quit.w / 2 - qw / 2, quit.y + (quit.h - 8) / 2, WHITE, true);
 
-        String foot = "Op Client 1.0.7  |  Minecraft 1.21.11";
+        g.blit(RenderPipelines.GUI_TEXTURED, DISCORD, discord.x, discord.y, 0f, 0f, discord.w, discord.h, discord.w, discord.h);
+        if (discord.hit(mouseX, mouseY)) {
+            g.fill(discord.x, discord.y, discord.x + discord.w, discord.y + 1, CYAN);
+            g.fill(discord.x, discord.y + discord.h - 1, discord.x + discord.w, discord.y + discord.h, CYAN);
+            g.fill(discord.x, discord.y, discord.x + 1, discord.y + discord.h, CYAN);
+            g.fill(discord.x + discord.w - 1, discord.y, discord.x + discord.w, discord.y + discord.h, CYAN);
+        }
+
+        String foot = "Op Client 1.0.8  |  Minecraft 1.21.11";
         g.drawString(this.font, foot, this.width / 2 - this.font.width(foot) / 2, quit.y + quit.h + 6, GREY, true);
+    }
+
+    /** Opens the Mod Menu screen by name (it is a separate mod, so no compile-time link to it). */
+    private static void openModMenu(Minecraft mc, Screen parent) {
+        try {
+            Class<?> c = Class.forName("com.terraformersmc.modmenu.gui.ModsScreen");
+            mc.setScreen((Screen) c.getConstructor(Screen.class).newInstance(parent));
+        } catch (Throwable ignored) {
+            // Mod Menu changed its screen: nothing happens
+        }
+    }
+
+    private static void openLink(String url) {
+        Thread t = new Thread(() -> {
+            try {
+                if (java.awt.Desktop.isDesktopSupported() && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
+                    java.awt.Desktop.getDesktop().browse(java.net.URI.create(url));
+                    return;
+                }
+            } catch (Throwable ignored) {
+                // fall through to the OS command
+            }
+            try {
+                String os = System.getProperty("os.name", "").toLowerCase();
+                if (os.contains("win")) new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", url).start();
+                else if (os.contains("mac")) new ProcessBuilder("open", url).start();
+                else new ProcessBuilder("xdg-open", url).start();
+            } catch (Throwable ignored) {
+                // no browser available
+            }
+        }, "OpClient-open-link");
+        t.setDaemon(true);
+        t.start();
     }
 
     @Override
