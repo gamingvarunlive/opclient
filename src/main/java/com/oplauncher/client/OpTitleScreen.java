@@ -94,7 +94,7 @@ public class OpTitleScreen extends Screen {
         place(quit, this.width / 2 - 45, y + 11, 90, 20);
 
         int dw = Math.min(112, this.width / 5), dh = dw * 125 / 202;
-        place(discord, this.width - dw - 10, this.height - dh - 10, dw, dh);
+        place(discord, this.width - dw - Math.max(16, this.width / 28), this.height - dh - Math.max(16, this.height / 18), dw, dh);
 
         // top right: name, then the icon buttons, the last one is the accent logo button
         int nameW = Math.max(60, this.font.width(userName) + 34);
@@ -183,7 +183,7 @@ public class OpTitleScreen extends Screen {
             g.fill(discord.x + discord.w - 1, discord.y, discord.x + discord.w, discord.y + discord.h, CYAN);
         }
 
-        String foot = "Op Client 1.0.8  |  Minecraft 1.21.11";
+        String foot = "Op Client 1.0.9  |  Minecraft 1.21.11";
         g.drawString(this.font, foot, this.width / 2 - this.font.width(foot) / 2, quit.y + quit.h + 6, GREY, true);
     }
 
